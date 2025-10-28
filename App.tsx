@@ -45,75 +45,7 @@ interface RankedResume extends ResumeFile {
 }
 
 type SortKey = "overallFitScore" | "skillMatchScore" | "experienceRelevanceScore" | "technicalSkillsScore";
-type FilterKey = 'all' | 'shortlisted';
-
-// --- AI & ANALYSIS UTILITY FUNCTIONS ---
-const getAiAnalysis = async (jobDescription: string, resumeContent: string): Promise<AnalysisReport> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-  const analysisSchema = {
-    type: Type.OBJECT,
-    properties: {
-      candidateName: { type: Type.STRING, description: "Candidate's full name. If not found, use the filename." },
-      currentTitle: { type: Type.STRING, description: "Candidate's most recent or current job title. If not found, state 'Not specified'." },
-      location: { type: Type.STRING, description: "Candidate's city/state. If not found, state 'Not specified'." },
-      yearsOfExperience: { type: Type.NUMBER, description: "Total years of professional experience relevant to the job description." },
-      overallFitScore: { type: Type.NUMBER, description: "A holistic score from 0-100 for overall fit, considering all factors." },
-      skillMatchScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's skills match the job description's requirements." },
-      experienceRelevanceScore: { type: Type.NUMBER, description: "A score from 0-100 based on the relevance of job titles, companies, and duration of experience." },
-      educationFitScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's education aligns with the job requirements." },
-      softSkillsScore: { type: Type.NUMBER, description: "A score from 0-100 evaluating soft skills like communication, teamwork, and leadership." },
-      technicalSkillsScore: { type: Type.NUMBER, description: "A score from 0-100 measuring the presence of specific tools and technologies from the job description." },
-      summary: { type: Type.STRING, description: "A 2-3 sentence summary of the candidate's profile and suitability." },
-      strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Key strengths of the candidate for this role." },
-      gaps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Potential gaps or missing qualifications compared to the job description." },
-      topSkills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The top 3-5 most relevant skills found in the resume." },
-      suggestedQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Insightful interview questions to ask the candidate." },
-      scoreExplanations: {
-          type: Type.OBJECT,
-          properties: {
-              overall: { type: Type.STRING, description: "A 1-sentence explanation for the Overall Fit score." },
-              skill: { type: Type.STRING, description: "A 1-sentence explanation for the Skill Match score." },
-              experience: { type: Type.STRING, description: "A 1-sentence explanation for the Experience Relevance score." },
-              education: { type: Type.STRING, description: "A 1-sentence explanation for the Education Fit score." },
-              softSkills: { type: Type.STRING, description: "A 1-sentence explanation for the Soft Skills score." },
-              technicalSkills: { type: Type.STRING, description: "A 1-sentence explanation for the Technical Skills score." },
-          },
-          required: ["overall", "skill", "experience", "education", "softSkills", "technicalSkills"]
-      }
-    },
-    required: ["candidateName", "currentTitle", "location", "yearsOfExperience", "overallFitScore", "skillMatchScore", "experienceRelevanceScore", "educationFitScore", "softSkillsScore", "technicalSkillsScore", "summary", "strengths", "gaps", "topSkills", "suggestedQuestions", "scoreExplanations"],
-  };
-
-  const prompt = `
-    You are an expert HR recruitment analyst. Your task is to perform a detailed, multi-faceted analysis of a resume against a job description.
-    Your analysis must be completely objective and free of bias. Do not consider any personal identifiers like name, gender, or ethnicity in your scoring.
-    Return a single, structured JSON object that strictly adheres to the provided schema. Do not include any introductory text, markdown formatting, or backticks.
-
-    **Job Description:**
-    ---
-    ${jobDescription}
-    ---
-
-    **Resume Content:**
-    ---
-    ${resumeContent}
-    ---
-
-    Analyze the resume and provide scores and text for all fields in the JSON schema. Be critical and realistic in your scoring.
-  `;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: analysisSchema,
-    },
-  });
-
-  return JSON.parse(response.text);
-};
+type FilterKey = 'all' | 'topPicks';
 
 
 // --- ICON COMPONENTS ---
@@ -125,6 +57,7 @@ const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => <svg x
 const InfoIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ThumbsUpIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path d="M1 8.25a1.25 1.25 0 112.5 0v7.5a1.25 1.25 0 11-2.5 0v-7.5zM11 3V1.7c0-.268.14-.516.372-.648A.755.755 0 0112 1.7v1.362c0 .332.174.647.458.822l5.013 2.924a1.25 1.25 0 01.529 1.043v4.288a1.25 1.25 0 01-1.25 1.25h-3.336a1.25 1.25 0 01-1.158-.808l-1.425-4.274a.25.25 0 00-.472-.036l-1.29 4.84A1.25 1.25 0 017.25 16h-1.5a.75.75 0 01-.75-.75V8.25a.75.75 0 01.75-.75h2a.75.75 0 01.75.75v5.336l1.01-3.786a1.25 1.25 0 012.366.632L11 12.75V3z" /></svg>;
 const ThumbsDownIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path d="M1 11.75a1.25 1.25 0 102.5 0V4.25a1.25 1.25 0 10-2.5 0v7.5zM11 17v1.3c0 .268-.14.516-.372.648A.755.755 0 0012 18.3v-1.362a1.25 1.25 0 00-.458-.822L6.529 13.192a1.25 1.25 0 00-.529-1.043V7.86a1.25 1.25 0 001.25-1.25h3.336a1.25 1.25 0 001.158.808l1.425 4.274a.25.25 0 01.472.036l1.29-4.84A1.25 1.25 0 0014.75 4h1.5a.75.75 0 00.75.75v7.5a.75.75 0 00-.75.75h-2a.75.75 0 00-.75-.75V6.664l-1.01 3.786a1.25 1.25 0 00-2.366-.632L11 7.25V17z" /></svg>;
+const StarIcon: React.FC<{ className?: string; filled?: boolean }> = ({ className, filled }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>{filled ? (<path fillRule="evenodd" d="M10.868 2.884c.321-.662 1.215-.662 1.536 0l1.822 3.755 4.132.602c.73.107 1.022.992.494 1.503l-2.99 2.913.706 4.116c.124.727-.638 1.283-1.296.952L10 15.127l-3.673 1.93c-.658.332-1.42-.225-1.296-.952l.706-4.116-2.99-2.913c-.528-.511-.236-1.396.494-1.503l4.132-.602 1.822-3.755z" clipRule="evenodd" />) : (<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />)}</svg>);
 
 // --- UI HELPER COMPONENTS ---
 const getScoreColor = (score: number): string => {
@@ -251,9 +184,9 @@ const RankedResultCard: React.FC<{
     result: RankedResume; 
     rank: number; 
     onViewInsights: () => void;
-    onShortlistToggle: (id: string) => void;
-    isShortlisted: boolean;
-}> = ({ result, rank, onViewInsights, onShortlistToggle, isShortlisted }) => {
+    onTopPickToggle: (id: string) => void;
+    isTopPick: boolean;
+}> = ({ result, rank, onViewInsights, onTopPickToggle, isTopPick }) => {
   const { analysis, file } = result;
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -268,27 +201,19 @@ const RankedResultCard: React.FC<{
     URL.revokeObjectURL(url);
   };
 
-  const handleCheckboxClick = (e: React.MouseEvent) => {
+  const handleTopPickClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      onShortlistToggle(result.id);
+      onTopPickToggle(result.id);
   }
 
   return (
-    <li className={`bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl ${isShortlisted ? 'ring-2 ring-blue-500' : 'hover:ring-2 hover:ring-blue-400/50'}`}>
+    <li className={`bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl ${isTopPick ? 'ring-2 ring-yellow-400' : 'hover:ring-2 hover:ring-blue-400/50'}`}>
       <div className="p-5">
         <div className="flex items-start gap-4">
-          {/* Rank, Avatar & Shortlist */}
+          {/* Rank, Avatar */}
           <div className="flex-shrink-0 flex flex-col items-center gap-2">
             <span className="text-sm font-bold text-gray-500 dark:text-gray-400">#{rank}</span>
             <InitialsAvatar name={analysis.candidateName} score={analysis.overallFitScore} />
-            <input 
-                type="checkbox" 
-                checked={isShortlisted}
-                onChange={() => onShortlistToggle(result.id)}
-                onClick={handleCheckboxClick}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                aria-label={`Shortlist ${analysis.candidateName}`}
-            />
           </div>
 
           {/* Candidate Info */}
@@ -300,6 +225,9 @@ const RankedResultCard: React.FC<{
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{analysis.location} • {analysis.yearsOfExperience} years exp.</p>
                 </div>
                 <div className="flex items-center gap-1 mt-2 sm:mt-0">
+                   <button onClick={handleTopPickClick} title="Mark as Top Pick" className={`p-2 rounded-full transition-colors ${isTopPick ? 'text-yellow-400 hover:text-yellow-500 bg-yellow-400/10' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                       <StarIcon className="w-5 h-5" filled={isTopPick} />
+                   </button>
                    <button onClick={onViewInsights} title="View AI Insights" className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><EyeIcon className="w-5 h-5"/></button>
                    <button onClick={handleDownload} title="Download Resume" className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><DownloadIcon className="w-5 h-5"/></button>
                 </div>
@@ -335,8 +263,81 @@ function App() {
   const [selectedInsight, setSelectedInsight] = useState<RankedResume | null>(null);
   const [progress, setProgress] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('overallFitScore');
-  const [shortlistedIds, setShortlistedIds] = useState<Set<string>>(new Set());
+  const [topPickIds, setTopPickIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterKey>('all');
+  const [apiKey] = useState<string>('AIzaSyBnO8321ZORcK2JUo-snJZrcpQnWtN86mg');
+
+  // --- AI & ANALYSIS UTILITY FUNCTIONS ---
+  const getAiAnalysis = async (jobDescription: string, resumeContent: string): Promise<AnalysisReport> => {
+    if (!apiKey) {
+        throw new Error("API Key is missing. Please enter your Gemini API Key.");
+    }
+    const ai = new GoogleGenAI({ apiKey });
+
+    const analysisSchema = {
+      type: Type.OBJECT,
+      properties: {
+        candidateName: { type: Type.STRING, description: "Candidate's full name. If not found, use the filename." },
+        currentTitle: { type: Type.STRING, description: "Candidate's most recent or current job title. If not found, state 'Not specified'." },
+        location: { type: Type.STRING, description: "Candidate's city/state. If not found, state 'Not specified'." },
+        yearsOfExperience: { type: Type.NUMBER, description: "Total years of professional experience relevant to the job description." },
+        overallFitScore: { type: Type.NUMBER, description: "A holistic score from 0-100 for overall fit, considering all factors." },
+        skillMatchScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's skills match the job description's requirements." },
+        experienceRelevanceScore: { type: Type.NUMBER, description: "A score from 0-100 based on the relevance of job titles, companies, and duration of experience." },
+        educationFitScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's education aligns with the job requirements." },
+        softSkillsScore: { type: Type.NUMBER, description: "A score from 0-100 evaluating soft skills like communication, teamwork, and leadership." },
+        technicalSkillsScore: { type: Type.NUMBER, description: "A score from 0-100 measuring the presence of specific tools and technologies from the job description." },
+        summary: { type: Type.STRING, description: "A 2-3 sentence summary of the candidate's profile and suitability." },
+        strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Key strengths of the candidate for this role." },
+        gaps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Potential gaps or missing qualifications compared to the job description." },
+        topSkills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The top 3-5 most relevant skills found in the resume." },
+        suggestedQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Insightful interview questions to ask the candidate." },
+        scoreExplanations: {
+            type: Type.OBJECT,
+            properties: {
+                overall: { type: Type.STRING, description: "A 1-sentence explanation for the Overall Fit score." },
+                skill: { type: Type.STRING, description: "A 1-sentence explanation for the Skill Match score." },
+                experience: { type: Type.STRING, description: "A 1-sentence explanation for the Experience Relevance score." },
+                education: { type: Type.STRING, description: "A 1-sentence explanation for the Education Fit score." },
+                softSkills: { type: Type.STRING, description: "A 1-sentence explanation for the Soft Skills score." },
+                technicalSkills: { type: Type.STRING, description: "A 1-sentence explanation for the Technical Skills score." },
+            },
+            required: ["overall", "skill", "experience", "education", "softSkills", "technicalSkills"]
+        }
+      },
+      required: ["candidateName", "currentTitle", "location", "yearsOfExperience", "overallFitScore", "skillMatchScore", "experienceRelevanceScore", "educationFitScore", "softSkillsScore", "technicalSkillsScore", "summary", "strengths", "gaps", "topSkills", "suggestedQuestions", "scoreExplanations"],
+    };
+
+    const prompt = `
+      You are an expert HR recruitment analyst. Your task is to perform a detailed, multi-faceted analysis of a resume against a job description.
+      Your analysis must be completely objective and free of bias. Do not consider any personal identifiers like name, gender, or ethnicity in your scoring.
+      Return a single, structured JSON object that strictly adheres to the provided schema. Do not include any introductory text, markdown formatting, or backticks.
+
+      **Job Description:**
+      ---
+      ${jobDescription}
+      ---
+
+      **Resume Content:**
+      ---
+      ${resumeContent}
+      ---
+
+      Analyze the resume and provide scores and text for all fields in the JSON schema. Be critical and realistic in your scoring.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: analysisSchema,
+      },
+    });
+
+    return JSON.parse(response.text);
+  };
+
 
   const handleFiles = useCallback(async (files: FileList) => {
     setIsLoading(true);
@@ -398,7 +399,7 @@ function App() {
   };
   
   const handleAnalyze = async () => {
-    if (!resumes.length || !jobDescription.trim()) return;
+    if (!resumes.length || !jobDescription.trim() || !apiKey.trim()) return;
     setIsLoading(true);
     setRankedResults([]);
     setError(null);
@@ -424,8 +425,8 @@ function App() {
     }
   };
   
-  const handleShortlistToggle = (id: string) => {
-      setShortlistedIds(prev => {
+  const handleTopPickToggle = (id: string) => {
+      setTopPickIds(prev => {
           const newSet = new Set(prev);
           if (newSet.has(id)) {
               newSet.delete(id);
@@ -438,17 +439,17 @@ function App() {
 
   const displayedResults = useMemo(() => {
     const sorted = [...rankedResults].sort((a, b) => b.analysis[sortKey] - a.analysis[sortKey]);
-    if (filter === 'shortlisted') {
-        return sorted.filter(r => shortlistedIds.has(r.id));
+    if (filter === 'topPicks') {
+        return sorted.filter(r => topPickIds.has(r.id));
     }
     return sorted;
-  }, [rankedResults, sortKey, filter, shortlistedIds]);
+  }, [rankedResults, sortKey, filter, topPickIds]);
 
 
   const downloadCSV = () => {
     const headers = [
       "Rank", "Candidate Name", "Overall Fit", "Skill Match", "Tech Skills", "Soft Skills", "Experience", "Education",
-      "Current Title", "Location", "Years of Exp", "Summary", "Top Skills", "Strengths", "Gaps", "File Name", "Shortlisted"
+      "Current Title", "Location", "Years of Exp", "Summary", "Top Skills", "Strengths", "Gaps", "File Name", "Top Pick"
     ];
     const rows = displayedResults.map((result, index) => [
       index + 1,
@@ -467,7 +468,7 @@ function App() {
       `"${result.analysis.strengths.join('; ').replace(/"/g, '""')}"`,
       `"${result.analysis.gaps.join('; ').replace(/"/g, '""')}"`,
       `"${result.file.name.replace(/"/g, '""')}"`,
-      shortlistedIds.has(result.id) ? "Yes" : "No"
+      topPickIds.has(result.id) ? "Yes" : "No"
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -515,8 +516,8 @@ function App() {
             </div>
             
             <div className="mt-6">
-                <button onClick={handleAnalyze} disabled={!resumes.length || !jobDescription.trim() || isLoading} className="w-full flex justify-center items-center gap-3 py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-500 transition-all">
-                    {isLoading ? `Analyzing... (${progress}/${resumes.length})` : `Rank ${resumes.length} Resumes with AI`}
+                <button onClick={handleAnalyze} disabled={!resumes.length || !jobDescription.trim() || !apiKey.trim() || isLoading} className="w-full flex justify-center items-center gap-3 py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-500 transition-all">
+                    {isLoading ? `Analyzing... (${progress}/${resumes.length})` : `Rank ${resumes.length} Resumes`}
                 </button>
             </div>
 
@@ -530,7 +531,7 @@ function App() {
                             <div className="flex items-center gap-2">
                                <span className="isolate inline-flex rounded-md shadow-sm">
                                 <button onClick={() => setFilter('all')} type="button" className={`relative inline-flex items-center rounded-l-md px-3 py-2 text-sm font-semibold ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>All ({rankedResults.length})</button>
-                                <button onClick={() => setFilter('shortlisted')} type="button" className={`relative -ml-px inline-flex items-center rounded-r-md px-3 py-2 text-sm font-semibold ${filter === 'shortlisted' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Shortlisted ({shortlistedIds.size})</button>
+                                <button onClick={() => setFilter('topPicks')} type="button" className={`relative -ml-px inline-flex items-center rounded-r-md px-3 py-2 text-sm font-semibold ${filter === 'topPicks' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}><StarIcon className="w-4 h-4 mr-1.5 -ml-0.5 text-yellow-300" filled/>Top Picks ({topPickIds.size})</button>
                                </span>
                             </div>
                              <div className="flex items-center gap-2">
@@ -555,8 +556,8 @@ function App() {
                             result={result} 
                             rank={index + 1}
                             onViewInsights={() => setSelectedInsight(result)}
-                            onShortlistToggle={handleShortlistToggle}
-                            isShortlisted={shortlistedIds.has(result.id)}
+                            onTopPickToggle={handleTopPickToggle}
+                            isTopPick={topPickIds.has(result.id)}
                           />
                         ))}
                     </ul>

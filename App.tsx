@@ -265,7 +265,7 @@ function App() {
   const [sortKey, setSortKey] = useState<SortKey>('overallFitScore');
   const [topPickIds, setTopPickIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [apiKey] = useState<string>('AIzaSyBnO8321ZORcK2JUo-snJZrcpQnWtN86mg');
+  const [apiKey] = useState<string>('AIzaSyD2oXJKgbwwslDxhSZsm8F9ZuPdCFjmidA');
 
   // --- AI & ANALYSIS UTILITY FUNCTIONS ---
   const getAiAnalysis = async (jobDescription: string, resumeContent: string): Promise<AnalysisReport> => {

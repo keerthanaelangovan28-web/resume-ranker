@@ -12,19 +12,37 @@ interface ResumeFile {
   content: string;
 }
 
+interface ScoreExplanation {
+  overall: string;
+  skill: string;
+  experience: string;
+  education: string;
+}
+
 interface AnalysisReport {
   candidateName: string;
-  overallScore: number;
+  currentTitle: string;
+  location: string;
+  yearsOfExperience: number;
+  overallFitScore: number;
+  skillMatchScore: number;
+  experienceRelevanceScore: number;
+  educationFitScore: number;
   summary: string;
   strengths: string[];
-  weaknesses: string[];
-  standoutSkills: string[];
+  gaps: string[];
+  topSkills: string[];
   suggestedQuestions: string[];
+  scoreExplanations: ScoreExplanation;
 }
+
 
 interface RankedResume extends ResumeFile {
   analysis: AnalysisReport;
 }
+
+type SortKey = "overallFitScore" | "skillMatchScore" | "experienceRelevanceScore";
+
 
 // --- AI & ANALYSIS UTILITY FUNCTIONS ---
 const getAiAnalysis = async (jobDescription: string, resumeContent: string): Promise<AnalysisReport> => {
@@ -33,19 +51,37 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
   const analysisSchema = {
     type: Type.OBJECT,
     properties: {
-      candidateName: { type: Type.STRING, description: "The full name of the candidate." },
-      matchScore: { type: Type.NUMBER, description: "A score from 0 to 100 representing how well the resume matches the job description." },
+      candidateName: { type: Type.STRING, description: "Candidate's full name. If not found, use the filename." },
+      currentTitle: { type: Type.STRING, description: "Candidate's most recent or current job title. If not found, state 'Not specified'." },
+      location: { type: Type.STRING, description: "Candidate's city/state. If not found, state 'Not specified'." },
+      yearsOfExperience: { type: Type.NUMBER, description: "Total years of professional experience relevant to the job description." },
+      overallFitScore: { type: Type.NUMBER, description: "A holistic score from 0-100 for overall fit, considering all factors." },
+      skillMatchScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's skills match the job description's requirements." },
+      experienceRelevanceScore: { type: Type.NUMBER, description: "A score from 0-100 based on the relevance of job titles, companies, and duration of experience." },
+      educationFitScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's education aligns with the job requirements." },
       summary: { type: Type.STRING, description: "A 2-3 sentence summary of the candidate's profile and suitability." },
-      strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Key strengths of the candidate for the role, based on the job description." },
-      weaknesses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Potential weaknesses or missing qualifications based on the job description." },
-      standoutSkills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "1-3 unique skills or experiences not required by the job description but are valuable assets." },
-      suggestedQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Insightful interview questions to ask based on the resume and job description." },
+      strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Key strengths of the candidate for the role." },
+      gaps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Potential gaps or missing qualifications compared to the job description." },
+      topSkills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The top 3-5 most relevant skills found in the resume." },
+      suggestedQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Insightful interview questions to ask." },
+      scoreExplanations: {
+          type: Type.OBJECT,
+          properties: {
+              overall: { type: Type.STRING, description: "A 1-sentence explanation for the Overall Fit score." },
+              skill: { type: Type.STRING, description: "A 1-sentence explanation for the Skill Match score." },
+              experience: { type: Type.STRING, description: "A 1-sentence explanation for the Experience Relevance score." },
+              education: { type: Type.STRING, description: "A 1-sentence explanation for the Education Fit score." },
+          },
+          required: ["overall", "skill", "experience", "education"]
+      }
     },
-    required: ["candidateName", "matchScore", "summary", "strengths", "weaknesses", "standoutSkills", "suggestedQuestions"],
+    required: ["candidateName", "currentTitle", "location", "yearsOfExperience", "overallFitScore", "skillMatchScore", "experienceRelevanceScore", "educationFitScore", "summary", "strengths", "gaps", "topSkills", "suggestedQuestions", "scoreExplanations"],
   };
 
   const prompt = `
-    You are an expert HR assistant. Your task is to analyze a resume based on a provided job description and return a structured JSON analysis. Do not include any introductory text, markdown formatting, or backticks in your response.
+    You are an expert HR recruitment analyst. Your task is to perform a detailed, multi-faceted analysis of a resume against a job description.
+    Your analysis must be completely objective and free of bias. Do not consider any personal identifiers like name, gender, or ethnicity in your scoring.
+    Return a single, structured JSON object that strictly adheres to the provided schema. Do not include any introductory text, markdown formatting, or backticks.
 
     **Job Description:**
     ---
@@ -57,7 +93,7 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
     ${resumeContent}
     ---
 
-    Based on the above, provide a JSON object that strictly follows the defined schema. Identify any standout skills or experiences that are not explicitly in the job description but would be a major asset for the role.
+    Analyze the resume and provide scores and text for all fields in the JSON schema.
   `;
 
   const response = await ai.models.generateContent({
@@ -69,29 +105,108 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
     },
   });
 
-  // The response.text is already a parsed JSON object when schema is used
-  const analysisResult = JSON.parse(response.text);
-
-  return {
-    candidateName: analysisResult.candidateName,
-    overallScore: analysisResult.matchScore,
-    summary: analysisResult.summary,
-    strengths: analysisResult.strengths,
-    weaknesses: analysisResult.weaknesses,
-    standoutSkills: analysisResult.standoutSkills,
-    suggestedQuestions: analysisResult.suggestedQuestions,
-  };
+  return JSON.parse(response.text);
 };
 
 
 // --- ICON COMPONENTS ---
 const UploadIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>);
 const SparklesIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 2zM5.404 4.343a.75.75 0 010 1.06l-2.475 2.475a.75.75 0 11-1.06-1.06L4.343 4.343a.75.75 0 011.06 0zm9.192 0a.75.75 0 011.06 0l2.475 2.475a.75.75 0 11-1.06 1.06L15.657 5.404a.75.75 0 010-1.06zM2 10a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5A.75.75 0 012 10zM17 10a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5A.75.75 0 0117 10zM5.404 15.657a.75.75 0 010-1.06l-2.475-2.475a.75.75 0 01-1.06 1.06L4.343 15.657a.75.75 0 011.06 0zm9.192 0a.75.75 0 011.06 0l2.475-2.475a.75.75 0 11-1.06-1.06L15.657 14.596a.75.75 0 010 1.06zM10 17a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5A.75.75 0 0110 17z" clipRule="evenodd" /></svg>);
-const CheckCircleIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>);
-const XCircleIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" /></svg>);
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>);
 const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>);
-const StarIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M10.868 2.884c.321-.662 1.215-.662 1.536 0l1.681 3.46c.154.316.46.533.805.572l3.81.554c.732.106 1.023.99.494 1.503l-2.756 2.686c-.24.234-.35.58-.3.922l.65 3.793c.125.728-.638 1.283-1.296.952l-3.4-1.787a1.125 1.125 0 00-1.036 0l-3.4 1.787c-.658.331-1.421-.224-1.296-.952l.65-3.793c.05-.341-.06-.688-.3-.922L1.84 9.077c-.529-.513-.238-1.397.494-1.503l3.81-.554c.345-.039.65-.256.805-.572l1.681-3.46z" clipRule="evenodd" /></svg>);
+const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4 4v-4m-4 4h8" /></svg>;
+const InfoIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+// --- UI HELPER COMPONENTS ---
+const getScoreColor = (score: number): string => {
+  if (score >= 75) return 'bg-green-500';
+  if (score >= 50) return 'bg-yellow-500';
+  return 'bg-red-500';
+};
+
+const ProgressBar: React.FC<{ label: string; score: number; explanation: string; }> = ({ label, score, explanation }) => (
+  <div className="group relative">
+    <div className="flex justify-between mb-1">
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{score}%</span>
+    </div>
+    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+      <div className={`${getScoreColor(score)} h-2.5 rounded-full`} style={{ width: `${score}%` }}></div>
+    </div>
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs hidden group-hover:block px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-90 dark:bg-gray-200 dark:text-gray-900 z-10">
+      <div className="flex items-start gap-2">
+        <InfoIcon className="w-5 h-5 flex-shrink-0" />
+        <span>{explanation}</span>
+      </div>
+      <div className="tooltip-arrow" data-popper-arrow></div>
+    </div>
+  </div>
+);
+
+// --- CANDIDATE CARD COMPONENT ---
+const RankedResultCard: React.FC<{ result: RankedResume; rank: number; onSelect: () => void }> = ({ result, rank, onSelect }) => {
+  const { analysis, file } = result;
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const scoreColor = getScoreColor(analysis.overallFitScore);
+  const scoreTextColor = scoreColor.replace('bg-', 'text-').replace('-500', '-600 dark:text-') + '-400';
+
+  return (
+    <li className="bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-blue-500">
+      <div className="p-5 cursor-pointer" onClick={onSelect}>
+        <div className="flex flex-col sm:flex-row items-start gap-4">
+          {/* Score & Rank */}
+          <div className="flex-shrink-0 flex flex-col items-center">
+             <div className={`w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 ${scoreColor.replace('bg-','border-')}`}>
+              <span className={`text-3xl font-bold ${scoreTextColor}`}>{analysis.overallFitScore}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Overall Fit</span>
+            </div>
+            <span className="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Rank #{rank}</span>
+          </div>
+
+          {/* Candidate Info */}
+          <div className="flex-grow min-w-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start">
+                <div className="min-w-0">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white truncate" title={analysis.candidateName}>{analysis.candidateName}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{analysis.currentTitle}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{analysis.location} • {analysis.yearsOfExperience} years experience</p>
+                </div>
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                   <button onClick={handleDownload} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><DownloadIcon className="w-5 h-5"/></button>
+                   <ChevronDownIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                </div>
+            </div>
+            <div className="mt-3">
+              <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Top Skills</h4>
+              <div className="flex flex-wrap gap-2">
+                {analysis.topSkills.slice(0, 3).map(skill => (
+                  <span key={skill} className="px-2.5 py-1 text-xs font-medium text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-300 rounded-full">{skill}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+            <ProgressBar label="Skill Match" score={analysis.skillMatchScore} explanation={analysis.scoreExplanations.skill} />
+            <ProgressBar label="Experience Relevance" score={analysis.experienceRelevanceScore} explanation={analysis.scoreExplanations.experience} />
+            <ProgressBar label="Education Fit" score={analysis.educationFitScore} explanation={analysis.scoreExplanations.education} />
+        </div>
+      </div>
+    </li>
+  );
+};
 
 
 // --- MAIN APP COMPONENT ---
@@ -103,8 +218,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedResume, setSelectedResume] = useState<RankedResume | null>(null);
-  const [expandedResult, setExpandedResult] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>('overallFitScore');
 
   const handleFiles = useCallback(async (files: FileList) => {
     setIsLoading(true);
@@ -182,7 +297,6 @@ function App() {
       );
       
       const results = await Promise.all(analysisPromises);
-      results.sort((a, b) => b.analysis.overallScore - a.analysis.overallScore);
       setRankedResults(results);
 
     } catch (err: any) {
@@ -193,6 +307,10 @@ function App() {
     }
   };
   
+  const sortedResults = useMemo(() => {
+    return [...rankedResults].sort((a, b) => b.analysis[sortKey] - a.analysis[sortKey]);
+  }, [rankedResults, sortKey]);
+
   const HighlightedText = useMemo(() => {
     if (!selectedResume) return null;
     const text = selectedResume.content;
@@ -206,108 +324,112 @@ function App() {
     })
   }, [selectedResume, jobDescription]);
 
+  const downloadCSV = () => {
+    const headers = [
+      "Rank", "Candidate Name", "Overall Fit Score", "Skill Match Score", "Experience Relevance Score", "Education Fit Score",
+      "Current Title", "Location", "Years of Experience", "Summary", "Top Skills", "Strengths", "Gaps", "File Name"
+    ];
+    const rows = sortedResults.map((result, index) => [
+      index + 1,
+      `"${result.analysis.candidateName.replace(/"/g, '""')}"`,
+      result.analysis.overallFitScore,
+      result.analysis.skillMatchScore,
+      result.analysis.experienceRelevanceScore,
+      result.analysis.educationFitScore,
+      `"${result.analysis.currentTitle.replace(/"/g, '""')}"`,
+      `"${result.analysis.location.replace(/"/g, '""')}"`,
+      result.analysis.yearsOfExperience,
+      `"${result.analysis.summary.replace(/"/g, '""')}"`,
+      `"${result.analysis.topSkills.join(', ').replace(/"/g, '""')}"`,
+      `"${result.analysis.strengths.join('; ').replace(/"/g, '""')}"`,
+      `"${result.analysis.gaps.join('; ').replace(/"/g, '""')}"`,
+      `"${result.file.name.replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n" 
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "resume_ranking_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4 font-sans transition-colors duration-300">
-      <div className="w-full max-w-4xl mx-auto">
+      <div className="w-full max-w-5xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
           <div className="p-8">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white text-center mb-6 flex items-center justify-center gap-3">
-              <SparklesIcon className="w-8 h-8 text-blue-500" />
-              AI Resume Ranker
-            </h1>
+            <header className="text-center mb-8">
+              <h1 className="text-4xl font-extrabold text-gray-800 dark:text-white flex items-center justify-center gap-3">
+                <SparklesIcon className="w-9 h-9 text-blue-500" />
+                AI Resume Ranker
+              </h1>
+              <p className="mt-2 text-md text-gray-600 dark:text-gray-400">Upload resumes, paste a job description, and get an instant, bias-free ranking.</p>
+            </header>
             
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* File Upload */}
-                <div>
-                    <label htmlFor="file-upload" onDragEnter={handleDragEvents} onDragLeave={handleDragEvents} onDragOver={handleDragEvents} onDrop={handleDrop} className={`flex justify-center w-full h-32 px-4 transition bg-white dark:bg-gray-700 border-2 ${isDragging ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} border-dashed rounded-md appearance-none cursor-pointer hover:border-gray-400 focus:outline-none`}>
-                        <span className="flex items-center space-x-2"><UploadIcon className="w-8 h-8 text-gray-600 dark:text-gray-400" /><span className="font-medium text-gray-600 dark:text-gray-400">Drop resumes or <span className="text-blue-600 underline">browse</span></span></span>
+                <div className="flex flex-col">
+                    <label className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">1. Upload Resumes</label>
+                    <label htmlFor="file-upload" onDragEnter={handleDragEvents} onDragLeave={handleDragEvents} onDragOver={handleDragEvents} onDrop={handleDrop} className={`flex flex-col justify-center items-center w-full flex-grow px-4 transition bg-white dark:bg-gray-700 border-2 ${isDragging ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} border-dashed rounded-md appearance-none cursor-pointer hover:border-gray-400 focus:outline-none`}>
+                        <UploadIcon className="w-10 h-10 text-gray-600 dark:text-gray-400" />
+                        <span className="mt-2 font-medium text-gray-600 dark:text-gray-400 text-center">Drop resumes here or <span className="text-blue-600 underline">browse</span></span>
                         <input type="file" id="file-upload" multiple accept=".pdf,.docx" className="hidden" onChange={(e) => e.target.files && handleFiles(e.target.files)} />
                     </label>
-                     {resumes.length > 0 && <div className="mt-4"><h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Uploaded {resumes.length} resume(s)</h3></div>}
+                     {resumes.length > 0 && <div className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">✅ {resumes.length} resume(s) uploaded</div>}
                 </div>
                 
                 {/* Job Description Input */}
-                <div>
-                    <textarea placeholder="Paste the full Job Description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} rows={6} className="w-full p-4 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="flex flex-col">
+                    <label htmlFor="job-desc" className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">2. Paste Job Description</label>
+                    <textarea id="job-desc" placeholder="Paste the full Job Description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} rows={8} className="w-full flex-grow p-4 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-                
-                <button onClick={handleAnalyze} disabled={!resumes.length || !jobDescription.trim() || isLoading} className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-500 transition-all">
-                    {isLoading ? `Analyzing... (${progress}/${resumes.length})` : `Analyze ${resumes.length} Resumes with AI`}
+            </div>
+            
+            <div className="mt-6">
+                <button onClick={handleAnalyze} disabled={!resumes.length || !jobDescription.trim() || isLoading} className="w-full flex justify-center items-center gap-3 py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-500 transition-all">
+                    {isLoading ? `Analyzing... (${progress}/${resumes.length})` : `Rank ${resumes.length} Resumes with AI`}
                 </button>
             </div>
+
 
             {error && <div className="mt-4 text-center text-red-500 bg-red-100 dark:bg-red-900/50 p-3 rounded-lg">{error}</div>}
 
             {/* Results */}
             {rankedResults.length > 0 && (
-                <div className="mt-8 animate-fade-in">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Ranked Results</h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 italic">
-                      Ranking is determined by an AI-powered holistic analysis of the candidate's skills, experience, and overall alignment with your job description.
-                    </p>
-                    <ul className="space-y-3">
-                        {rankedResults.map((result, index) => (
-                           <li key={result.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow-sm transition-all duration-300">
-                                <button onClick={() => setExpandedResult(expandedResult === result.id ? null : result.id)} className="w-full p-4 text-left flex items-center justify-between">
-                                    <div className="flex items-center min-w-0">
-                                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400 mr-4">#{index + 1}</span>
-                                        <div className="min-w-0">
-                                            <p className="text-md font-semibold text-gray-800 dark:text-gray-200 truncate" title={result.analysis.candidateName}>{result.analysis.candidateName}</p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={result.file.name}>{result.file.name}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-4">
-                                        <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">{result.analysis.overallScore}%</p>
-                                        <ChevronDownIcon className={`w-6 h-6 text-gray-500 dark:text-gray-400 transition-transform ${expandedResult === result.id ? 'rotate-180' : ''}`} />
-                                    </div>
-                                </button>
-                                {expandedResult === result.id && (
-                                    <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-600 animate-fade-in space-y-4">
-                                        <div className="pt-4">
-                                            <h4 className="font-semibold text-gray-800 dark:text-white mb-2">AI Summary</h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300">{result.analysis.summary}</p>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <h4 className="font-semibold text-gray-800 dark:text-white mb-2 flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-green-500"/> Strengths</h4>
-                                                <ul className="list-disc list-inside space-y-1 pl-2">
-                                                    {result.analysis.strengths.map((s, i) => <li key={i} className="text-sm text-gray-600 dark:text-gray-300">{s}</li>)}
-                                                </ul>
-                                            </div>
-                                             <div>
-                                                <h4 className="font-semibold text-gray-800 dark:text-white mb-2 flex items-center gap-2"><XCircleIcon className="w-5 h-5 text-red-500"/> Weaknesses</h4>
-                                                <ul className="list-disc list-inside space-y-1 pl-2">
-                                                    {result.analysis.weaknesses.map((w, i) => <li key={i} className="text-sm text-gray-600 dark:text-gray-300">{w}</li>)}
-                                                </ul>
-                                            </div>
-                                        </div>
-
-                                        {result.analysis.standoutSkills && result.analysis.standoutSkills.length > 0 && (
-                                          <div>
-                                              <h4 className="font-semibold text-gray-800 dark:text-white mb-2 flex items-center gap-2">
-                                                <StarIcon className="w-5 h-5 text-yellow-400"/> Standout Skills
-                                              </h4>
-                                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Unique skills or experiences not required by the job description.</p>
-                                              <ul className="list-disc list-inside space-y-1 pl-2">
-                                                  {result.analysis.standoutSkills.map((s, i) => <li key={i} className="text-sm text-gray-600 dark:text-gray-300">{s}</li>)}
-                                              </ul>
-                                          </div>
-                                        )}
-
-                                        <div>
-                                            <h4 className="font-semibold text-gray-800 dark:text-white mb-2">Suggested Interview Questions</h4>
-                                            <ul className="list-disc list-inside space-y-1">
-                                                {result.analysis.suggestedQuestions.map((q, i) => <li key={i} className="text-sm text-gray-600 dark:text-gray-300">{q}</li>)}
-                                            </ul>
-                                        </div>
-
-                                        <div className="text-center pt-2">
-                                            <button onClick={() => setSelectedResume(result)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">View Full Resume with Highlights</button>
-                                        </div>
-                                    </div>
-                                )}
-                            </li>
+                <div className="mt-10 animate-fade-in">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Ranked Candidates</h2>
+                        <div className="flex items-center gap-4 mt-2 sm:mt-0">
+                            <div className="flex items-center gap-2">
+                                <label htmlFor="sort" className="text-sm font-medium text-gray-600 dark:text-gray-300">Sort by:</label>
+                                <select id="sort" value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                                    <option value="overallFitScore">Overall Fit</option>
+                                    <option value="skillMatchScore">Skill Match</option>
+                                    <option value="experienceRelevanceScore">Experience</option>
+                                </select>
+                            </div>
+                            <button onClick={downloadCSV} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+                                <DownloadIcon className="w-4 h-4"/>
+                                Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <ul className="space-y-4">
+                        {sortedResults.map((result, index) => (
+                          <RankedResultCard 
+                            key={result.id} 
+                            result={result} 
+                            rank={index + 1}
+                            onSelect={() => setSelectedResume(result)}
+                          />
                         ))}
                     </ul>
                 </div>
@@ -318,7 +440,7 @@ function App() {
 
       {/* Modal for viewing resume text */}
       {selectedResume && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setSelectedResume(null)}>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setSelectedResume(null)}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-600"><h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate">{selectedResume.analysis.candidateName}</h3><button onClick={() => setSelectedResume(null)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon className="w-6 h-6 text-gray-600 dark:text-gray-300"/></button></div>
                 <div className="p-6 overflow-y-auto"><pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 dark:text-gray-300">{HighlightedText}</pre></div>

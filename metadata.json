@@ -1,0 +1,5 @@
+{
+  "name": " Resume Ranker",
+  "description": "Upload resumes, enter a job title, and get a ranked list based on relevance. No database required—all processing happens securely in your browser.",
+  "requestFramePermissions": []
+}

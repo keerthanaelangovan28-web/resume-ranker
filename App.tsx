@@ -17,6 +17,8 @@ interface ScoreExplanation {
   skill: string;
   experience: string;
   education: string;
+  softSkills: string;
+  technicalSkills: string;
 }
 
 interface AnalysisReport {
@@ -28,6 +30,8 @@ interface AnalysisReport {
   skillMatchScore: number;
   experienceRelevanceScore: number;
   educationFitScore: number;
+  softSkillsScore: number;
+  technicalSkillsScore: number;
   summary: string;
   strengths: string[];
   gaps: string[];
@@ -36,13 +40,12 @@ interface AnalysisReport {
   scoreExplanations: ScoreExplanation;
 }
 
-
 interface RankedResume extends ResumeFile {
   analysis: AnalysisReport;
 }
 
-type SortKey = "overallFitScore" | "skillMatchScore" | "experienceRelevanceScore";
-
+type SortKey = "overallFitScore" | "skillMatchScore" | "experienceRelevanceScore" | "technicalSkillsScore";
+type FilterKey = 'all' | 'shortlisted';
 
 // --- AI & ANALYSIS UTILITY FUNCTIONS ---
 const getAiAnalysis = async (jobDescription: string, resumeContent: string): Promise<AnalysisReport> => {
@@ -59,11 +62,13 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
       skillMatchScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's skills match the job description's requirements." },
       experienceRelevanceScore: { type: Type.NUMBER, description: "A score from 0-100 based on the relevance of job titles, companies, and duration of experience." },
       educationFitScore: { type: Type.NUMBER, description: "A score from 0-100 on how well the candidate's education aligns with the job requirements." },
+      softSkillsScore: { type: Type.NUMBER, description: "A score from 0-100 evaluating soft skills like communication, teamwork, and leadership." },
+      technicalSkillsScore: { type: Type.NUMBER, description: "A score from 0-100 measuring the presence of specific tools and technologies from the job description." },
       summary: { type: Type.STRING, description: "A 2-3 sentence summary of the candidate's profile and suitability." },
-      strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Key strengths of the candidate for the role." },
+      strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Key strengths of the candidate for this role." },
       gaps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Potential gaps or missing qualifications compared to the job description." },
       topSkills: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The top 3-5 most relevant skills found in the resume." },
-      suggestedQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Insightful interview questions to ask." },
+      suggestedQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Insightful interview questions to ask the candidate." },
       scoreExplanations: {
           type: Type.OBJECT,
           properties: {
@@ -71,11 +76,13 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
               skill: { type: Type.STRING, description: "A 1-sentence explanation for the Skill Match score." },
               experience: { type: Type.STRING, description: "A 1-sentence explanation for the Experience Relevance score." },
               education: { type: Type.STRING, description: "A 1-sentence explanation for the Education Fit score." },
+              softSkills: { type: Type.STRING, description: "A 1-sentence explanation for the Soft Skills score." },
+              technicalSkills: { type: Type.STRING, description: "A 1-sentence explanation for the Technical Skills score." },
           },
-          required: ["overall", "skill", "experience", "education"]
+          required: ["overall", "skill", "experience", "education", "softSkills", "technicalSkills"]
       }
     },
-    required: ["candidateName", "currentTitle", "location", "yearsOfExperience", "overallFitScore", "skillMatchScore", "experienceRelevanceScore", "educationFitScore", "summary", "strengths", "gaps", "topSkills", "suggestedQuestions", "scoreExplanations"],
+    required: ["candidateName", "currentTitle", "location", "yearsOfExperience", "overallFitScore", "skillMatchScore", "experienceRelevanceScore", "educationFitScore", "softSkillsScore", "technicalSkillsScore", "summary", "strengths", "gaps", "topSkills", "suggestedQuestions", "scoreExplanations"],
   };
 
   const prompt = `
@@ -93,7 +100,7 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
     ${resumeContent}
     ---
 
-    Analyze the resume and provide scores and text for all fields in the JSON schema.
+    Analyze the resume and provide scores and text for all fields in the JSON schema. Be critical and realistic in your scoring.
   `;
 
   const response = await ai.models.generateContent({
@@ -113,15 +120,27 @@ const getAiAnalysis = async (jobDescription: string, resumeContent: string): Pro
 const UploadIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>);
 const SparklesIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 2zM5.404 4.343a.75.75 0 010 1.06l-2.475 2.475a.75.75 0 11-1.06-1.06L4.343 4.343a.75.75 0 011.06 0zm9.192 0a.75.75 0 011.06 0l2.475 2.475a.75.75 0 11-1.06 1.06L15.657 5.404a.75.75 0 010-1.06zM2 10a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5A.75.75 0 012 10zM17 10a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5A.75.75 0 0117 10zM5.404 15.657a.75.75 0 010-1.06l-2.475-2.475a.75.75 0 01-1.06 1.06L4.343 15.657a.75.75 0 011.06 0zm9.192 0a.75.75 0 011.06 0l2.475-2.475a.75.75 0 11-1.06-1.06L15.657 14.596a.75.75 0 010 1.06zM10 17a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5A.75.75 0 0110 17z" clipRule="evenodd" /></svg>);
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>);
-const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>);
+const EyeIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>;
 const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4 4v-4m-4 4h8" /></svg>;
 const InfoIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const ThumbsUpIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path d="M1 8.25a1.25 1.25 0 112.5 0v7.5a1.25 1.25 0 11-2.5 0v-7.5zM11 3V1.7c0-.268.14-.516.372-.648A.755.755 0 0112 1.7v1.362c0 .332.174.647.458.822l5.013 2.924a1.25 1.25 0 01.529 1.043v4.288a1.25 1.25 0 01-1.25 1.25h-3.336a1.25 1.25 0 01-1.158-.808l-1.425-4.274a.25.25 0 00-.472-.036l-1.29 4.84A1.25 1.25 0 017.25 16h-1.5a.75.75 0 01-.75-.75V8.25a.75.75 0 01.75-.75h2a.75.75 0 01.75.75v5.336l1.01-3.786a1.25 1.25 0 012.366.632L11 12.75V3z" /></svg>;
+const ThumbsDownIcon: React.FC<{ className?: string }> = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path d="M1 11.75a1.25 1.25 0 102.5 0V4.25a1.25 1.25 0 10-2.5 0v7.5zM11 17v1.3c0 .268-.14.516-.372.648A.755.755 0 0012 18.3v-1.362a1.25 1.25 0 00-.458-.822L6.529 13.192a1.25 1.25 0 00-.529-1.043V7.86a1.25 1.25 0 001.25-1.25h3.336a1.25 1.25 0 001.158.808l1.425 4.274a.25.25 0 01.472.036l1.29-4.84A1.25 1.25 0 0014.75 4h1.5a.75.75 0 00.75.75v7.5a.75.75 0 00-.75.75h-2a.75.75 0 00-.75-.75V6.664l-1.01 3.786a1.25 1.25 0 00-2.366-.632L11 7.25V17z" /></svg>;
 
 // --- UI HELPER COMPONENTS ---
 const getScoreColor = (score: number): string => {
   if (score >= 75) return 'bg-green-500';
   if (score >= 50) return 'bg-yellow-500';
   return 'bg-red-500';
+};
+
+const InitialsAvatar: React.FC<{ name: string; score: number }> = ({ name, score }) => {
+    const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const bgColor = getScoreColor(score);
+    return (
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${bgColor} text-white font-bold text-xl`}>
+            {initials}
+        </div>
+    );
 };
 
 const ProgressBar: React.FC<{ label: string; score: number; explanation: string; }> = ({ label, score, explanation }) => (
@@ -133,18 +152,108 @@ const ProgressBar: React.FC<{ label: string; score: number; explanation: string;
     <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
       <div className={`${getScoreColor(score)} h-2.5 rounded-full`} style={{ width: `${score}%` }}></div>
     </div>
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs hidden group-hover:block px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-90 dark:bg-gray-200 dark:text-gray-900 z-10">
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs hidden group-hover:block px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-95 dark:bg-gray-200 dark:text-gray-900 z-10">
       <div className="flex items-start gap-2">
         <InfoIcon className="w-5 h-5 flex-shrink-0" />
         <span>{explanation}</span>
       </div>
-      <div className="tooltip-arrow" data-popper-arrow></div>
     </div>
   </div>
 );
 
+// --- CANDIDATE INSIGHTS MODAL ---
+const InsightModal: React.FC<{ result: RankedResume; onClose: () => void; jobDescription: string }> = ({ result, onClose, jobDescription }) => {
+    const { analysis } = result;
+    const [activeTab, setActiveTab] = useState<'analysis' | 'resume'>('analysis');
+
+    const HighlightedText = useMemo(() => {
+      const text = result.content;
+      const queryTokens = new Set(jobDescription.toLowerCase().split(/\s+/).filter(t => t.length > 3));
+      const words = text.split(/(\s+)/);
+      return words.map((word, i) => {
+          const cleanWord = word.toLowerCase().replace(/[.,;:"()?!\[\]{}]+$/, '');
+          if(queryTokens.has(cleanWord)) {
+              return <mark key={i} className="bg-yellow-300 dark:bg-yellow-500 rounded">{word}</mark>
+          }
+          return word;
+      })
+    }, [result.content, jobDescription]);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={onClose}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <header className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+            <div>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white truncate">{analysis.candidateName}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{analysis.currentTitle}</p>
+            </div>
+            <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon className="w-6 h-6 text-gray-600 dark:text-gray-300"/></button>
+          </header>
+          
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <nav className="flex -mb-px px-4" aria-label="Tabs">
+              <button onClick={() => setActiveTab('analysis')} className={`shrink-0 border-b-2 py-3 px-4 text-sm font-medium ${activeTab === 'analysis' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>AI Analysis</button>
+              <button onClick={() => setActiveTab('resume')} className={`shrink-0 border-b-2 py-3 px-4 text-sm font-medium ${activeTab === 'resume' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>Full Resume</button>
+            </nav>
+          </div>
+
+          <main className="p-6 overflow-y-auto">
+            {activeTab === 'analysis' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 space-y-4">
+                  <h4 className="font-semibold text-gray-800 dark:text-white">Fit Scores</h4>
+                  <ProgressBar label="Overall Fit" score={analysis.overallFitScore} explanation={analysis.scoreExplanations.overall} />
+                  <ProgressBar label="Skill Match" score={analysis.skillMatchScore} explanation={analysis.scoreExplanations.skill} />
+                  <ProgressBar label="Technical Skills" score={analysis.technicalSkillsScore} explanation={analysis.scoreExplanations.technicalSkills} />
+                  <ProgressBar label="Experience" score={analysis.experienceRelevanceScore} explanation={analysis.scoreExplanations.experience} />
+                  <ProgressBar label="Soft Skills" score={analysis.softSkillsScore} explanation={analysis.scoreExplanations.softSkills} />
+                  <ProgressBar label="Education Fit" score={analysis.educationFitScore} explanation={analysis.scoreExplanations.education} />
+                </div>
+                <div className="md:col-span-2 space-y-6">
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-white mb-2">AI Summary</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{analysis.summary}</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-semibold text-gray-800 dark:text-white mb-2 flex items-center gap-2"><ThumbsUpIcon className="w-5 h-5 text-green-500"/>Strengths</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                        {analysis.strengths.map(s => <li key={s}>{s}</li>)}
+                      </ul>
+                    </div>
+                     <div>
+                      <h4 className="font-semibold text-gray-800 dark:text-white mb-2 flex items-center gap-2"><ThumbsDownIcon className="w-5 h-5 text-red-500"/>Potential Gaps</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                        {analysis.gaps.map(g => <li key={g}>{g}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-white mb-2">Suggested Interview Questions</h4>
+                    <ul className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                      {analysis.suggestedQuestions.map(q => <li key={q}>{q}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+            {activeTab === 'resume' && (
+              <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 dark:text-gray-300">{HighlightedText}</pre>
+            )}
+          </main>
+        </div>
+      </div>
+    );
+};
+
 // --- CANDIDATE CARD COMPONENT ---
-const RankedResultCard: React.FC<{ result: RankedResume; rank: number; onSelect: () => void }> = ({ result, rank, onSelect }) => {
+const RankedResultCard: React.FC<{ 
+    result: RankedResume; 
+    rank: number; 
+    onViewInsights: () => void;
+    onShortlistToggle: (id: string) => void;
+    isShortlisted: boolean;
+}> = ({ result, rank, onViewInsights, onShortlistToggle, isShortlisted }) => {
   const { analysis, file } = result;
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -159,20 +268,27 @@ const RankedResultCard: React.FC<{ result: RankedResume; rank: number; onSelect:
     URL.revokeObjectURL(url);
   };
 
-  const scoreColor = getScoreColor(analysis.overallFitScore);
-  const scoreTextColor = scoreColor.replace('bg-', 'text-').replace('-500', '-600 dark:text-') + '-400';
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onShortlistToggle(result.id);
+  }
 
   return (
-    <li className="bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-blue-500">
-      <div className="p-5 cursor-pointer" onClick={onSelect}>
-        <div className="flex flex-col sm:flex-row items-start gap-4">
-          {/* Score & Rank */}
-          <div className="flex-shrink-0 flex flex-col items-center">
-             <div className={`w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 ${scoreColor.replace('bg-','border-')}`}>
-              <span className={`text-3xl font-bold ${scoreTextColor}`}>{analysis.overallFitScore}</span>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Overall Fit</span>
-            </div>
-            <span className="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Rank #{rank}</span>
+    <li className={`bg-white dark:bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl ${isShortlisted ? 'ring-2 ring-blue-500' : 'hover:ring-2 hover:ring-blue-400/50'}`}>
+      <div className="p-5">
+        <div className="flex items-start gap-4">
+          {/* Rank, Avatar & Shortlist */}
+          <div className="flex-shrink-0 flex flex-col items-center gap-2">
+            <span className="text-sm font-bold text-gray-500 dark:text-gray-400">#{rank}</span>
+            <InitialsAvatar name={analysis.candidateName} score={analysis.overallFitScore} />
+            <input 
+                type="checkbox" 
+                checked={isShortlisted}
+                onChange={() => onShortlistToggle(result.id)}
+                onClick={handleCheckboxClick}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                aria-label={`Shortlist ${analysis.candidateName}`}
+            />
           </div>
 
           {/* Candidate Info */}
@@ -181,11 +297,11 @@ const RankedResultCard: React.FC<{ result: RankedResume; rank: number; onSelect:
                 <div className="min-w-0">
                     <p className="text-xl font-bold text-gray-900 dark:text-white truncate" title={analysis.candidateName}>{analysis.candidateName}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{analysis.currentTitle}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{analysis.location} • {analysis.yearsOfExperience} years experience</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{analysis.location} • {analysis.yearsOfExperience} years exp.</p>
                 </div>
-                <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                   <button onClick={handleDownload} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><DownloadIcon className="w-5 h-5"/></button>
-                   <ChevronDownIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                <div className="flex items-center gap-1 mt-2 sm:mt-0">
+                   <button onClick={onViewInsights} title="View AI Insights" className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><EyeIcon className="w-5 h-5"/></button>
+                   <button onClick={handleDownload} title="Download Resume" className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"><DownloadIcon className="w-5 h-5"/></button>
                 </div>
             </div>
             <div className="mt-3">
@@ -196,12 +312,11 @@ const RankedResultCard: React.FC<{ result: RankedResume; rank: number; onSelect:
                 ))}
               </div>
             </div>
+             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+                <ProgressBar label="Overall Fit" score={analysis.overallFitScore} explanation={analysis.scoreExplanations.overall} />
+                <ProgressBar label="Skill Match" score={analysis.skillMatchScore} explanation={analysis.scoreExplanations.skill} />
+            </div>
           </div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-            <ProgressBar label="Skill Match" score={analysis.skillMatchScore} explanation={analysis.scoreExplanations.skill} />
-            <ProgressBar label="Experience Relevance" score={analysis.experienceRelevanceScore} explanation={analysis.scoreExplanations.experience} />
-            <ProgressBar label="Education Fit" score={analysis.educationFitScore} explanation={analysis.scoreExplanations.education} />
         </div>
       </div>
     </li>
@@ -217,9 +332,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedResume, setSelectedResume] = useState<RankedResume | null>(null);
+  const [selectedInsight, setSelectedInsight] = useState<RankedResume | null>(null);
   const [progress, setProgress] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('overallFitScore');
+  const [shortlistedIds, setShortlistedIds] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<FilterKey>('all');
 
   const handleFiles = useCallback(async (files: FileList) => {
     setIsLoading(true);
@@ -307,33 +424,39 @@ function App() {
     }
   };
   
-  const sortedResults = useMemo(() => {
-    return [...rankedResults].sort((a, b) => b.analysis[sortKey] - a.analysis[sortKey]);
-  }, [rankedResults, sortKey]);
+  const handleShortlistToggle = (id: string) => {
+      setShortlistedIds(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(id)) {
+              newSet.delete(id);
+          } else {
+              newSet.add(id);
+          }
+          return newSet;
+      });
+  };
 
-  const HighlightedText = useMemo(() => {
-    if (!selectedResume) return null;
-    const text = selectedResume.content;
-    const queryTokens = new Set(jobDescription.toLowerCase().split(/\s+/).filter(t => t.length > 3));
-    const words = text.split(/(\s+)/);
-    return words.map((word, i) => {
-        if(queryTokens.has(word.toLowerCase().replace(/[.,;:"()?!\[\]{}]+$/, ''))) {
-            return <mark key={i} className="bg-yellow-300 dark:bg-yellow-500 rounded">{word}</mark>
-        }
-        return word;
-    })
-  }, [selectedResume, jobDescription]);
+  const displayedResults = useMemo(() => {
+    const sorted = [...rankedResults].sort((a, b) => b.analysis[sortKey] - a.analysis[sortKey]);
+    if (filter === 'shortlisted') {
+        return sorted.filter(r => shortlistedIds.has(r.id));
+    }
+    return sorted;
+  }, [rankedResults, sortKey, filter, shortlistedIds]);
+
 
   const downloadCSV = () => {
     const headers = [
-      "Rank", "Candidate Name", "Overall Fit Score", "Skill Match Score", "Experience Relevance Score", "Education Fit Score",
-      "Current Title", "Location", "Years of Experience", "Summary", "Top Skills", "Strengths", "Gaps", "File Name"
+      "Rank", "Candidate Name", "Overall Fit", "Skill Match", "Tech Skills", "Soft Skills", "Experience", "Education",
+      "Current Title", "Location", "Years of Exp", "Summary", "Top Skills", "Strengths", "Gaps", "File Name", "Shortlisted"
     ];
-    const rows = sortedResults.map((result, index) => [
+    const rows = displayedResults.map((result, index) => [
       index + 1,
       `"${result.analysis.candidateName.replace(/"/g, '""')}"`,
       result.analysis.overallFitScore,
       result.analysis.skillMatchScore,
+      result.analysis.technicalSkillsScore,
+      result.analysis.softSkillsScore,
       result.analysis.experienceRelevanceScore,
       result.analysis.educationFitScore,
       `"${result.analysis.currentTitle.replace(/"/g, '""')}"`,
@@ -343,7 +466,8 @@ function App() {
       `"${result.analysis.topSkills.join(', ').replace(/"/g, '""')}"`,
       `"${result.analysis.strengths.join('; ').replace(/"/g, '""')}"`,
       `"${result.analysis.gaps.join('; ').replace(/"/g, '""')}"`,
-      `"${result.file.name.replace(/"/g, '""')}"`
+      `"${result.file.name.replace(/"/g, '""')}"`,
+      shortlistedIds.has(result.id) ? "Yes" : "No"
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -374,7 +498,6 @@ function App() {
             </header>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* File Upload */}
                 <div className="flex flex-col">
                     <label className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">1. Upload Resumes</label>
                     <label htmlFor="file-upload" onDragEnter={handleDragEvents} onDragLeave={handleDragEvents} onDragOver={handleDragEvents} onDrop={handleDrop} className={`flex flex-col justify-center items-center w-full flex-grow px-4 transition bg-white dark:bg-gray-700 border-2 ${isDragging ? 'border-blue-500' : 'border-gray-300 dark:border-gray-600'} border-dashed rounded-md appearance-none cursor-pointer hover:border-gray-400 focus:outline-none`}>
@@ -385,7 +508,6 @@ function App() {
                      {resumes.length > 0 && <div className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">✅ {resumes.length} resume(s) uploaded</div>}
                 </div>
                 
-                {/* Job Description Input */}
                 <div className="flex flex-col">
                     <label htmlFor="job-desc" className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">2. Paste Job Description</label>
                     <textarea id="job-desc" placeholder="Paste the full Job Description here..." value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} rows={8} className="w-full flex-grow p-4 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -398,54 +520,63 @@ function App() {
                 </button>
             </div>
 
-
             {error && <div className="mt-4 text-center text-red-500 bg-red-100 dark:bg-red-900/50 p-3 rounded-lg">{error}</div>}
 
-            {/* Results */}
             {rankedResults.length > 0 && (
                 <div className="mt-10 animate-fade-in">
-                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                         <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Ranked Candidates</h2>
-                        <div className="flex items-center gap-4 mt-2 sm:mt-0">
+                        <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
+                               <span className="isolate inline-flex rounded-md shadow-sm">
+                                <button onClick={() => setFilter('all')} type="button" className={`relative inline-flex items-center rounded-l-md px-3 py-2 text-sm font-semibold ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>All ({rankedResults.length})</button>
+                                <button onClick={() => setFilter('shortlisted')} type="button" className={`relative -ml-px inline-flex items-center rounded-r-md px-3 py-2 text-sm font-semibold ${filter === 'shortlisted' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Shortlisted ({shortlistedIds.size})</button>
+                               </span>
+                            </div>
+                             <div className="flex items-center gap-2">
                                 <label htmlFor="sort" className="text-sm font-medium text-gray-600 dark:text-gray-300">Sort by:</label>
-                                <select id="sort" value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                                <select id="sort" value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
                                     <option value="overallFitScore">Overall Fit</option>
                                     <option value="skillMatchScore">Skill Match</option>
+                                    <option value="technicalSkillsScore">Tech Skills</option>
                                     <option value="experienceRelevanceScore">Experience</option>
                                 </select>
                             </div>
-                            <button onClick={downloadCSV} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
-                                <DownloadIcon className="w-4 h-4"/>
-                                Export CSV
+                            <button onClick={downloadCSV} title="Export current view to CSV" className="p-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700">
+                                <DownloadIcon className="w-5 h-5"/>
                             </button>
                         </div>
                     </div>
                     
                     <ul className="space-y-4">
-                        {sortedResults.map((result, index) => (
+                        {displayedResults.map((result, index) => (
                           <RankedResultCard 
                             key={result.id} 
                             result={result} 
                             rank={index + 1}
-                            onSelect={() => setSelectedResume(result)}
+                            onViewInsights={() => setSelectedInsight(result)}
+                            onShortlistToggle={handleShortlistToggle}
+                            isShortlisted={shortlistedIds.has(result.id)}
                           />
                         ))}
                     </ul>
+                    {displayedResults.length === 0 && (
+                        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                            <p>No candidates match the current filter.</p>
+                        </div>
+                    )}
                 </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modal for viewing resume text */}
-      {selectedResume && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setSelectedResume(null)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-600"><h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate">{selectedResume.analysis.candidateName}</h3><button onClick={() => setSelectedResume(null)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon className="w-6 h-6 text-gray-600 dark:text-gray-300"/></button></div>
-                <div className="p-6 overflow-y-auto"><pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 dark:text-gray-300">{HighlightedText}</pre></div>
-            </div>
-        </div>
+      {selectedInsight && (
+        <InsightModal 
+            result={selectedInsight} 
+            onClose={() => setSelectedInsight(null)}
+            jobDescription={jobDescription}
+        />
       )}
     </div>
   );

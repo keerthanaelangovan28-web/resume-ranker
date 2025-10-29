@@ -307,6 +307,9 @@ function App() {
     }
     return 'light';
   });
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = React.useRef<number | null>(null);
+
 
   useEffect(() => {
     const root = document.documentElement;
@@ -322,6 +325,23 @@ function App() {
   const toggleTheme = () => {
     setTheme(t => t === 'light' ? 'dark' : 'light');
   };
+  
+  useEffect(() => {
+    if (isLoading) {
+        timerRef.current = window.setInterval(() => {
+            setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
+    } else {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+    }
+    return () => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+    };
+  }, [isLoading]);
 
   // --- AI & ANALYSIS UTILITY FUNCTIONS ---
   const getAiAnalysis = async (jobDescription: string, resumeContent: string): Promise<AnalysisReport> => {
@@ -458,6 +478,10 @@ function App() {
   
   const handleAnalyze = async () => {
     if (!resumes.length || !jobDescription.trim() || !apiKey.trim()) return;
+
+    const estimatedSeconds = 5 + resumes.length * 2; // 5s base + 2s per resume
+    setCountdown(estimatedSeconds);
+
     setIsLoading(true);
     setRankedResults([]);
     setError(null);
@@ -580,6 +604,12 @@ function App() {
                       {isLoading ? `Analyzing... (${progress}/${resumes.length})` : `Rank ${resumes.length} Resumes`}
                   </button>
               </div>
+
+              {isLoading && (
+                  <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400 animate-fade-in">
+                    <p>Processing — we’re calling AI. If busy, results will appear in {countdown} seconds.</p>
+                  </div>
+              )}
 
               {error && <div className="mt-4 text-center text-red-500 bg-red-100 dark:bg-red-900/50 p-3 rounded-lg">{error}</div>}
 
